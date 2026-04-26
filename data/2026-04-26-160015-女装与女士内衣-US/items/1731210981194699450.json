@@ -1,0 +1,74 @@
+{
+  "product_id": "1731210981194699450",
+  "title": "Women's Solid Woven Crop Cami Top & A-line Skirt Two-piece Set, Casual Fashion Cozy Two Piece Outfits for Daily Outdoor Wear, Ladies Clothes for Summer",
+  "price": 21.05,
+  "original_price": null,
+  "discount_rate": null,
+  "sales_count": 854,
+  "rating": null,
+  "review_count": null,
+  "image_url": "https://cdn.tabcut.com/dataservice/media/item/1731210981194699450/17312109811946994500.webp?x-oss-process=image/format,webp",
+  "seller_name": "MIXIFashion",
+  "category": "女装与女士内衣",
+  "rank": 69,
+  "gmv": 17976.7,
+  "total_sales": 19854,
+  "commission_rate": 0.08,
+  "seller_type": "full_managed",
+  "growth_rate": 1.3333,
+  "creator_count": 427,
+  "video_count": 542,
+  "live_count": 533,
+  "raw_data": {
+    "itemId": "1731210981194699450",
+    "itemName": "Women's Solid Woven Crop Cami Top & A-line Skirt Two-piece Set, Casual Fashion Cozy Two Piece Outfits for Daily Outdoor Wear, Ladies Clothes for Summer",
+    "itemPicUrl": "https://cdn.tabcut.com/dataservice/media/item/1731210981194699450/17312109811946994500.webp?x-oss-process=image/resize,w_246,h_246/format,webp",
+    "region": "US",
+    "categoryId": 28,
+    "categoryName": "女装与女士内衣",
+    "soldCountPeriod": null,
+    "soldCountGrowthRate": 1.3333,
+    "rank": 69,
+    "currencySymbolInfo": {
+      "local": "$",
+      "region": "$"
+    },
+    "priceList": [
+      {
+        "local": 21.05,
+        "region": 21.05
+      },
+      {
+        "local": 13.66,
+        "region": 13.66
+      }
+    ],
+    "fullManagedFlag": null,
+    "gmvInfo": {
+      "periodCurrent": {
+        "local": 17976.7,
+        "region": 17976.7
+      }
+    },
+    "soldCountInfo": {
+      "periodCurrent": 854,
+      "total": 19854
+    },
+    "relatedCreatorInfo": {
+      "period90d": 427
+    },
+    "relatedVideoInfo": {
+      "period90d": 542
+    },
+    "relatedLiveInfo": {
+      "period90d": 533
+    },
+    "commissionRate": 0.08,
+    "sellerId": "8646927656366019258",
+    "sellerName": "MIXIFashion",
+    "sellerLogoUrl": "https://cdn.tabcut.com/dataservice/media/seller/8646927656366019258/avatar.webp?x-oss-process=image/format,webp",
+    "sellerType": "full_managed",
+    "highRateDays": null,
+    "soldCountTrendList": null
+  }
+}

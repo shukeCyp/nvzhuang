@@ -1,0 +1,74 @@
+{
+  "product_id": "1730778628184969488",
+  "title": "Women's Plain Dress, Summer Clothes Women, Casual Basic Loose Fit Sleeveless Dress for Beach Holiday Vacation, Ladies Summer Clothes, Women's Clothing, Womenswear, Dresses for Party, Minimalist A Line Dress",
+  "price": 17.17,
+  "original_price": null,
+  "discount_rate": null,
+  "sales_count": 1717,
+  "rating": null,
+  "review_count": null,
+  "image_url": "https://cdn.tabcut.com/dataservice/media/item/1730778628184969488/17307786281849694880.webp?x-oss-process=image/format,webp",
+  "seller_name": "Sunshine Grove",
+  "category": "女装与女士内衣",
+  "rank": 33,
+  "gmv": 29480.89,
+  "total_sales": 103881,
+  "commission_rate": 0.08,
+  "seller_type": "full_managed",
+  "growth_rate": 0.0826,
+  "creator_count": 509,
+  "video_count": 717,
+  "live_count": 1009,
+  "raw_data": {
+    "itemId": "1730778628184969488",
+    "itemName": "Women's Plain Dress, Summer Clothes Women, Casual Basic Loose Fit Sleeveless Dress for Beach Holiday Vacation, Ladies Summer Clothes, Women's Clothing, Womenswear, Dresses for Party, Minimalist A Line Dress",
+    "itemPicUrl": "https://cdn.tabcut.com/dataservice/media/item/1730778628184969488/17307786281849694880.webp?x-oss-process=image/resize,w_246,h_246/format,webp",
+    "region": "US",
+    "categoryId": 28,
+    "categoryName": "女装与女士内衣",
+    "soldCountPeriod": null,
+    "soldCountGrowthRate": 0.0826,
+    "rank": 33,
+    "currencySymbolInfo": {
+      "local": "$",
+      "region": "$"
+    },
+    "priceList": [
+      {
+        "local": 17.17,
+        "region": 17.17
+      },
+      {
+        "local": 30.37,
+        "region": 30.37
+      }
+    ],
+    "fullManagedFlag": null,
+    "gmvInfo": {
+      "periodCurrent": {
+        "local": 29480.89,
+        "region": 29480.89
+      }
+    },
+    "soldCountInfo": {
+      "periodCurrent": 1717,
+      "total": 103881
+    },
+    "relatedCreatorInfo": {
+      "period90d": 509
+    },
+    "relatedVideoInfo": {
+      "period90d": 717
+    },
+    "relatedLiveInfo": {
+      "period90d": 1009
+    },
+    "commissionRate": 0.08,
+    "sellerId": "8647592758759756048",
+    "sellerName": "Sunshine Grove",
+    "sellerLogoUrl": "https://cdn.tabcut.com/dataservice/media/seller/8647592758759756048/avatar.webp?x-oss-process=image/format,webp",
+    "sellerType": "full_managed",
+    "highRateDays": null,
+    "soldCountTrendList": null
+  }
+}

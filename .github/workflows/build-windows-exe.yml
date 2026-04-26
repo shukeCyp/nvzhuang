@@ -1,0 +1,68 @@
+name: Build Windows EXE
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        shell: pwsh
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        shell: pwsh
+        run: npm run build
+
+      - name: Sync frontend assets
+        shell: pwsh
+        run: |
+          if (Test-Path backend/vue) {
+            Remove-Item backend/vue -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path backend/vue -Force | Out-Null
+          Copy-Item frontend/dist/* backend/vue -Recurse -Force
+
+      - name: Install Playwright Chromium
+        shell: pwsh
+        run: |
+          $env:PLAYWRIGHT_BROWSERS_PATH = (Join-Path $PWD "ms-playwright")
+          python -m playwright install chromium
+
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          $env:PLAYWRIGHT_BROWSERS_PATH = (Join-Path $PWD "ms-playwright")
+          pyinstaller --noconfirm "女装助手.spec"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 女装助手-windows
+          path: dist/女装助手.exe

@@ -1,0 +1,74 @@
+{
+  "product_id": "1730400707823243810",
+  "title": "Women's Casual Everyday Loose-Fit V Neck Top, Hollow Out Design, Polyester Knit Fabric, Hand Washable, All Season Wear, Knitwear",
+  "price": 18.56,
+  "original_price": null,
+  "discount_rate": null,
+  "sales_count": 672,
+  "rating": null,
+  "review_count": null,
+  "image_url": "https://cdn.tabcut.com/dataservice/media/item/1730400707823243810/17304007078232438100.webp?x-oss-process=image/format,webp",
+  "seller_name": "Meiduo Joy",
+  "category": "女装与女士内衣",
+  "rank": 112,
+  "gmv": 12472.32,
+  "total_sales": 52518,
+  "commission_rate": 0.08,
+  "seller_type": "full_managed",
+  "growth_rate": 1.2178,
+  "creator_count": 270,
+  "video_count": 408,
+  "live_count": 1720,
+  "raw_data": {
+    "itemId": "1730400707823243810",
+    "itemName": "Women's Casual Everyday Loose-Fit V Neck Top, Hollow Out Design, Polyester Knit Fabric, Hand Washable, All Season Wear, Knitwear",
+    "itemPicUrl": "https://cdn.tabcut.com/dataservice/media/item/1730400707823243810/17304007078232438100.webp?x-oss-process=image/resize,w_246,h_246/format,webp",
+    "region": "US",
+    "categoryId": 28,
+    "categoryName": "女装与女士内衣",
+    "soldCountPeriod": null,
+    "soldCountGrowthRate": 1.2178,
+    "rank": 112,
+    "currencySymbolInfo": {
+      "local": "$",
+      "region": "$"
+    },
+    "priceList": [
+      {
+        "local": 18.56,
+        "region": 18.56
+      },
+      {
+        "local": 18.38,
+        "region": 18.38
+      }
+    ],
+    "fullManagedFlag": null,
+    "gmvInfo": {
+      "periodCurrent": {
+        "local": 12472.32,
+        "region": 12472.32
+      }
+    },
+    "soldCountInfo": {
+      "periodCurrent": 672,
+      "total": 52518
+    },
+    "relatedCreatorInfo": {
+      "period90d": 270
+    },
+    "relatedVideoInfo": {
+      "period90d": 408
+    },
+    "relatedLiveInfo": {
+      "period90d": 1720
+    },
+    "commissionRate": 0.08,
+    "sellerId": "8651027999661265442",
+    "sellerName": "Meiduo Joy",
+    "sellerLogoUrl": "https://cdn.tabcut.com/dataservice/media/seller/8651027999661265442/avatar.webp?x-oss-process=image/format,webp",
+    "sellerType": "full_managed",
+    "highRateDays": null,
+    "soldCountTrendList": null
+  }
+}

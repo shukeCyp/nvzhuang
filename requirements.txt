@@ -1,0 +1,4 @@
+pywebview>=4.4.1
+requests>=2.31.0
+Pillow>=10.4.0
+playwright>=1.44.0
