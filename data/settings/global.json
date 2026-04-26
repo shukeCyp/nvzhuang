@@ -1,6 +1,0 @@
-{
-  "headless": "false",
-  "image_threads": 4,
-  "video_threads": 1,
-  "image_provider": "hotang"
-}
