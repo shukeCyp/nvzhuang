@@ -192,6 +192,8 @@ class Api:
                     'role_images': status.get('role_images', []),
                     'video_url': status.get('video', ''),
                     'running': status.get('running', ''),
+                    'image_error': status.get('image_error', ''),
+                    'video_error': status.get('video_error', ''),
                 })
 
         items.sort(key=lambda item: (item.get('rank') is None, item.get('rank') or 0))
@@ -273,7 +275,7 @@ class Api:
 
         log.info('[生图] 开始 product_id=%s provider=%s', product_id, provider)
         if should_track_running:
-            self._update_status(project_dir, product_id, {'running': '生图中'})
+            self._update_status(project_dir, product_id, {'running': '生图中', 'image_error': ''})
         try:
             # 1. 获取场景
             log.info('[生图] 获取场景: title=%s', title[:20])
@@ -313,11 +315,18 @@ class Api:
 
             # 6. 写 status.json
             role_paths = [p['path'] for p in parts]
-            self._update_status(project_dir, product_id, {'role_images': role_paths, 'video': ''})
+            self._update_status(project_dir, product_id, {
+                'role_images': role_paths,
+                'video': '',
+                'image_error': '',
+                'video_error': '',
+            })
 
             return {'ok': True, 'path': file_path, 'parts': parts}
         except Exception as e:
             log.error('[生图] 失败 product_id=%s: %s', product_id, e)
+            if project_dir and product_id:
+                self._update_status(project_dir, product_id, {'image_error': str(e)})
             return {'ok': False, 'message': str(e)}
         finally:
             if should_track_running:
@@ -352,7 +361,7 @@ class Api:
         log.info('[生视频] 开始 product_id=%s', product_id)
         log.info('[生视频] role_image_path=%s', role_image_path)
         if should_track_running:
-            self._update_status(project_dir, product_id, {'running': '生视频中'})
+            self._update_status(project_dir, product_id, {'running': '生视频中', 'video_error': ''})
         try:
             with open(role_image_path, 'rb') as f:
                 image_b64 = base64.b64encode(f.read()).decode()
@@ -369,10 +378,12 @@ class Api:
                 os.replace(file_path, final_path)
             log.info('[生视频] 完成: %s', final_path)
 
-            self._update_status(project_dir, product_id, {'video': final_path})
+            self._update_status(project_dir, product_id, {'video': final_path, 'video_error': ''})
             return {'ok': True, 'path': final_path}
         except Exception as e:
             log.error('[生视频] 失败 product_id=%s: %s', product_id, e)
+            if project_dir and product_id:
+                self._update_status(project_dir, product_id, {'video_error': str(e)})
             return {'ok': False, 'message': str(e)}
         finally:
             if should_track_running:

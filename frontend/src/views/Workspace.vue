@@ -250,24 +250,28 @@ const IDLE_STATUS = '待处理'
 const IMAGE_QUEUED_STATUS = '图片排队中'
 const IMAGE_RUNNING_STATUS = '图片生成中'
 const IMAGE_DONE_STATUS = '图片生成完成'
+const IMAGE_FAILED_STATUS = '图片生成失败'
 const VIDEO_QUEUED_STATUS = '视频排队中'
 const VIDEO_RUNNING_STATUS = '视频生成中'
 const VIDEO_DONE_STATUS = '视频生成完成'
+const VIDEO_FAILED_STATUS = '视频生成失败'
 const IMAGE_ACTIVE_STATUSES = new Set([IMAGE_QUEUED_STATUS, IMAGE_RUNNING_STATUS])
 const VIDEO_ACTIVE_STATUSES = new Set([VIDEO_QUEUED_STATUS, VIDEO_RUNNING_STATUS])
 const RUNNING_STATUSES = new Set([...IMAGE_ACTIVE_STATUSES, ...VIDEO_ACTIVE_STATUSES])
 const RUNNING_MAP = { '生图中': IMAGE_RUNNING_STATUS, '生视频中': VIDEO_RUNNING_STATUS }
 
-function deriveImageStatus({ hasRoleImages, prevStatus = '', backendRunning = '' }) {
+function deriveImageStatus({ hasRoleImages, hasError = false, prevStatus = '', backendRunning = '' }) {
   if (backendRunning === IMAGE_RUNNING_STATUS) return IMAGE_RUNNING_STATUS
   if (hasRoleImages) return IMAGE_DONE_STATUS
+  if (hasError) return IMAGE_FAILED_STATUS
   if ((prevStatus === IMAGE_QUEUED_STATUS || prevStatus === IMAGE_RUNNING_STATUS) && !backendRunning) return prevStatus
   return IDLE_STATUS
 }
 
-function deriveVideoStatus({ hasVideo, prevStatus = '', backendRunning = '' }) {
+function deriveVideoStatus({ hasVideo, hasError = false, prevStatus = '', backendRunning = '' }) {
   if (backendRunning === VIDEO_RUNNING_STATUS) return VIDEO_RUNNING_STATUS
   if (hasVideo) return VIDEO_DONE_STATUS
+  if (hasError) return VIDEO_FAILED_STATUS
   if ((prevStatus === VIDEO_QUEUED_STATUS || prevStatus === VIDEO_RUNNING_STATUS) && !backendRunning) return prevStatus
   return IDLE_STATUS
 }
@@ -285,11 +289,15 @@ function isItemBusy(item) {
 }
 
 function imageButtonLabel(item) {
-  return IMAGE_ACTIVE_STATUSES.has(item.image_status) ? item.image_status : '图片生成'
+  return [IMAGE_QUEUED_STATUS, IMAGE_RUNNING_STATUS, IMAGE_FAILED_STATUS].includes(item.image_status)
+    ? item.image_status
+    : '图片生成'
 }
 
 function videoButtonLabel(item) {
-  return VIDEO_ACTIVE_STATUSES.has(item.video_status) ? item.video_status : '视频生成'
+  return [VIDEO_QUEUED_STATUS, VIDEO_RUNNING_STATUS, VIDEO_FAILED_STATUS].includes(item.video_status)
+    ? item.video_status
+    : '视频生成'
 }
 
 async function loadWorkspace(silent = false) {
@@ -317,11 +325,13 @@ async function loadWorkspace(silent = false) {
         const backendRunning = RUNNING_MAP[item.running] || ''
         const imageStatus = deriveImageStatus({
           hasRoleImages: roleImages.length > 0,
+          hasError: Boolean(item.image_error),
           prevStatus: prev.image_status,
           backendRunning,
         })
         const videoStatus = deriveVideoStatus({
           hasVideo: Boolean(videoUrl),
+          hasError: Boolean(item.video_error),
           prevStatus: prev.video_status,
           backendRunning,
         })
