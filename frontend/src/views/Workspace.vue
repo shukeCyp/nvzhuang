@@ -80,14 +80,14 @@
             <td class="action-col">
               <div class="action-stack">
                 <button class="action-btn primary"
-                  :disabled="RUNNING_STATUSES.has(item.status)"
+                  :disabled="isItemBusy(item)"
                   @click="handleGenerateImage(item)">
-                  {{ item.status === '图片排队中' || item.status === '图片生成中' ? item.status : '图片生成' }}
+                  {{ imageButtonLabel(item) }}
                 </button>
                 <button class="action-btn"
-                  :disabled="RUNNING_STATUSES.has(item.status)"
+                  :disabled="isItemBusy(item)"
                   @click="handleGenerateVideo(item)">
-                  {{ item.status === '视频排队中' || item.status === '视频生成中' ? item.status : '视频生成' }}
+                  {{ videoButtonLabel(item) }}
                 </button>
               </div>
             </td>
@@ -246,15 +246,50 @@ const batchDialog = reactive({
   missing: 0,
 })
 
-const RUNNING_STATUSES = new Set(['图片排队中', '图片生成中', '视频排队中', '视频生成中'])
-const RUNNING_MAP = { '生图中': '图片生成中', '生视频中': '视频生成中' }
-const QUEUED_STATUSES = new Set(['图片排队中', '视频排队中'])
+const IDLE_STATUS = '待处理'
+const IMAGE_QUEUED_STATUS = '图片排队中'
+const IMAGE_RUNNING_STATUS = '图片生成中'
+const IMAGE_DONE_STATUS = '图片生成完成'
+const VIDEO_QUEUED_STATUS = '视频排队中'
+const VIDEO_RUNNING_STATUS = '视频生成中'
+const VIDEO_DONE_STATUS = '视频生成完成'
+const IMAGE_ACTIVE_STATUSES = new Set([IMAGE_QUEUED_STATUS, IMAGE_RUNNING_STATUS])
+const VIDEO_ACTIVE_STATUSES = new Set([VIDEO_QUEUED_STATUS, VIDEO_RUNNING_STATUS])
+const RUNNING_STATUSES = new Set([...IMAGE_ACTIVE_STATUSES, ...VIDEO_ACTIVE_STATUSES])
+const RUNNING_MAP = { '生图中': IMAGE_RUNNING_STATUS, '生视频中': VIDEO_RUNNING_STATUS }
 
-function deriveStatus(roleImages, videoUrl) {
-  if (roleImages.length && videoUrl) return '已完成'
-  if (videoUrl) return '视频生成完成'
-  if (roleImages.length) return '图片生成完成'
-  return '待处理'
+function deriveImageStatus({ hasRoleImages, prevStatus = '', backendRunning = '' }) {
+  if (backendRunning === IMAGE_RUNNING_STATUS) return IMAGE_RUNNING_STATUS
+  if (hasRoleImages) return IMAGE_DONE_STATUS
+  if ((prevStatus === IMAGE_QUEUED_STATUS || prevStatus === IMAGE_RUNNING_STATUS) && !backendRunning) return prevStatus
+  return IDLE_STATUS
+}
+
+function deriveVideoStatus({ hasVideo, prevStatus = '', backendRunning = '' }) {
+  if (backendRunning === VIDEO_RUNNING_STATUS) return VIDEO_RUNNING_STATUS
+  if (hasVideo) return VIDEO_DONE_STATUS
+  if ((prevStatus === VIDEO_QUEUED_STATUS || prevStatus === VIDEO_RUNNING_STATUS) && !backendRunning) return prevStatus
+  return IDLE_STATUS
+}
+
+function settledImageStatus(roleImages) {
+  return Array.isArray(roleImages) && roleImages.length ? IMAGE_DONE_STATUS : IDLE_STATUS
+}
+
+function settledVideoStatus(videoUrl) {
+  return videoUrl ? VIDEO_DONE_STATUS : IDLE_STATUS
+}
+
+function isItemBusy(item) {
+  return RUNNING_STATUSES.has(item.image_status) || RUNNING_STATUSES.has(item.video_status)
+}
+
+function imageButtonLabel(item) {
+  return IMAGE_ACTIVE_STATUSES.has(item.image_status) ? item.image_status : '图片生成'
+}
+
+function videoButtonLabel(item) {
+  return VIDEO_ACTIVE_STATUSES.has(item.video_status) ? item.video_status : '视频生成'
 }
 
 async function loadWorkspace(silent = false) {
@@ -266,7 +301,10 @@ async function loadWorkspace(silent = false) {
     if (result?.ok) {
       project.value = result.project || {}
       // 保留运行时状态
-      const prevStatus = Object.fromEntries(items.value.map(i => [i.product_id, i.status]))
+      const prevStatus = Object.fromEntries(items.value.map(i => [i.product_id, {
+        image_status: i.image_status,
+        video_status: i.video_status,
+      }]))
       const prevSelections = Object.fromEntries(items.value.map(i => [i.product_id, {
         selected_role_index: i.selected_role_index,
         main_image_index: i.main_image_index,
@@ -275,14 +313,18 @@ async function loadWorkspace(silent = false) {
         const assetVersion = Date.now()
         const roleImages = Array.isArray(item.role_images) ? item.role_images.slice(0, 4).map(path => toFileUrl(path, assetVersion)) : []
         const videoUrl = item.video_url ? toFileUrl(item.video_url, assetVersion) : ''
-        const prev = prevStatus[item.product_id]
-        const backendRunning = item.running ? RUNNING_MAP[item.running] : null
-        const derivedStatus = deriveStatus(roleImages, videoUrl)
-        const canKeepQueued =
-          QUEUED_STATUSES.has(prev) &&
-          !backendRunning &&
-          derivedStatus === '待处理'
-        const status = backendRunning || (canKeepQueued ? prev : derivedStatus)
+        const prev = prevStatus[item.product_id] || {}
+        const backendRunning = RUNNING_MAP[item.running] || ''
+        const imageStatus = deriveImageStatus({
+          hasRoleImages: roleImages.length > 0,
+          prevStatus: prev.image_status,
+          backendRunning,
+        })
+        const videoStatus = deriveVideoStatus({
+          hasVideo: Boolean(videoUrl),
+          prevStatus: prev.video_status,
+          backendRunning,
+        })
         const sel = prevSelections[item.product_id] || {}
         const mainIdx = sel.main_image_index ?? 0
         return {
@@ -293,7 +335,8 @@ async function loadWorkspace(silent = false) {
           role_images: roleImages,
           selected_role_index: sel.selected_role_index ?? 0,
           video_url: videoUrl,
-          status,
+          image_status: imageStatus,
+          video_status: videoStatus,
         }
       })
       if (!silent) dialogItem.value = null
@@ -448,23 +491,59 @@ function resolveMainImageUrl(item, index) {
   return item.image_url || ''
 }
 
+function appendVersion(url, version = '') {
+  if (!version) return url
+  return `${url}${url.includes('?') ? '&' : '?'}v=${version}`
+}
+
 function toFileUrl(path, version = '') {
   if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://')) {
-    return version && path.startsWith('file://') ? `${path}${path.includes('?') ? '&' : '?'}v=${version}` : path
+  const raw = String(path)
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw
   }
-  const suffix = version ? `?v=${version}` : ''
-  return encodeURI(`file://${path}${suffix}`)
+  if (raw.startsWith('file://')) {
+    try {
+      return appendVersion(new URL(raw).toString(), version)
+    } catch {
+      return appendVersion(raw, version)
+    }
+  }
+
+  const normalized = raw.replace(/\\/g, '/')
+  let fileUrl = ''
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    fileUrl = `file:///${normalized}`
+  } else if (normalized.startsWith('//')) {
+    fileUrl = `file:${normalized}`
+  } else if (normalized.startsWith('/')) {
+    fileUrl = `file://${normalized}`
+  } else {
+    fileUrl = `file:///${normalized}`
+  }
+
+  return appendVersion(encodeURI(fileUrl), version)
 }
 
 function stripLocalFileUrl(path) {
   if (!path) return ''
-  return decodeURIComponent(path.replace('file://', '').split('?')[0])
+  const raw = String(path)
+  if (!raw.startsWith('file://')) return raw
+  try {
+    const url = new URL(raw)
+    let pathname = decodeURIComponent(url.pathname || '')
+    if (/^\/[A-Za-z]:\//.test(pathname)) {
+      pathname = pathname.slice(1)
+    }
+    return url.host ? `//${url.host}${pathname}` : pathname
+  } catch {
+    return decodeURIComponent(raw.replace('file://', '').split('?')[0]).replace(/^\/([A-Za-z]:\/)/, '$1')
+  }
 }
 
 async function handleGenerateImage(item) {
   if (!item.main_image_url) return toast.error('请先选择主图')
-  items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: '图片生成中' } : i)
+  items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, image_status: IMAGE_RUNNING_STATUS } : i)
   try {
     const prompts = await window.pywebview.api.get_settings('prompts')
     const r = await window.pywebview.api.generate_image_task({
@@ -478,14 +557,25 @@ async function handleGenerateImage(item) {
       const assetVersion = Date.now()
       const rolePaths = (r.parts || []).map(p => toFileUrl(p.path, assetVersion))
       items.value = items.value.map(i => i.product_id === item.product_id
-        ? { ...i, role_images: rolePaths, video_url: '', status: deriveStatus(rolePaths, '') } : i)
+        ? {
+            ...i,
+            role_images: rolePaths,
+            video_url: '',
+            image_status: settledImageStatus(rolePaths),
+            video_status: settledVideoStatus(''),
+          }
+        : i)
       toast.success('生图完成')
     } else {
-      items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: deriveStatus(i.role_images, i.video_url) } : i)
+      items.value = items.value.map(i => i.product_id === item.product_id
+        ? { ...i, image_status: settledImageStatus(i.role_images) }
+        : i)
       toast.error(r.message || '生图失败')
     }
   } catch (e) {
-    items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: deriveStatus(i.role_images, i.video_url) } : i)
+    items.value = items.value.map(i => i.product_id === item.product_id
+      ? { ...i, image_status: settledImageStatus(i.role_images) }
+      : i)
     toast.error('生图失败：' + e)
   }
 }
@@ -493,7 +583,7 @@ async function handleGenerateImage(item) {
 async function handleGenerateVideo(item) {
   const roleImg = item.role_images?.[item.selected_role_index]
   if (!roleImg) return toast.error('请先选择角色图')
-  items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: '视频生成中' } : i)
+  items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, video_status: VIDEO_RUNNING_STATUS } : i)
   try {
     const prompts = await window.pywebview.api.get_settings('prompts')
     const r = await window.pywebview.api.generate_video_task({
@@ -505,14 +595,19 @@ async function handleGenerateVideo(item) {
     if (r.ok) {
       const videoUrl = toFileUrl(r.path, Date.now())
       items.value = items.value.map(i => i.product_id === item.product_id
-        ? { ...i, video_url: videoUrl, status: deriveStatus(i.role_images, videoUrl) } : i)
+        ? { ...i, video_url: videoUrl, video_status: settledVideoStatus(videoUrl) }
+        : i)
       toast.success('视频生成完成')
     } else {
-      items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: deriveStatus(i.role_images, i.video_url) } : i)
+      items.value = items.value.map(i => i.product_id === item.product_id
+        ? { ...i, video_status: settledVideoStatus(i.video_url) }
+        : i)
       toast.error(r.message || '视频生成失败')
     }
   } catch (e) {
-    items.value = items.value.map(i => i.product_id === item.product_id ? { ...i, status: deriveStatus(i.role_images, i.video_url) } : i)
+    items.value = items.value.map(i => i.product_id === item.product_id
+      ? { ...i, video_status: settledVideoStatus(i.video_url) }
+      : i)
     toast.error('视频生成失败：' + e)
   }
 }
@@ -548,7 +643,12 @@ async function confirmBatchAction() {
 
   const pids = new Set(allItems.map(i => i.product_id))
   items.value = items.value.map(i => pids.has(i.product_id)
-    ? { ...i, status: isImage ? '图片排队中' : '视频排队中' } : i)
+    ? {
+        ...i,
+        image_status: isImage ? IMAGE_QUEUED_STATUS : i.image_status,
+        video_status: isImage ? i.video_status : VIDEO_QUEUED_STATUS,
+      }
+    : i)
 
   toast.success(`开始批量${isImage ? '生图' : '生视频'}，共 ${allItems.length} 条`)
 

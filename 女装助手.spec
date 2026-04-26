@@ -53,7 +53,6 @@ a = Analysis(
     runtime_hooks=[str(ROOT / 'pyinstaller_runtime_hook.py')],
     excludes=[],
     noarchive=False,
-    optimize=0,
 )
 pyz = PYZ(a.pure)
 

@@ -5,7 +5,9 @@ from datetime import datetime
 from settings_store import save
 
 LOGIN_URL = 'https://klingai.com/app/membership/membership-plan?f=1'
-WATCH_PATH = '/api/user/profile_and_features'
+LOGIN_SUCCESS_SELECTOR = '.user-profile .avatar-container img[src]'
+LOGIN_POLL_INTERVAL = 2
+LOGIN_TIMEOUT = 300
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,27 +27,10 @@ async def run_login():
         page = await context.new_page()
         log.info('浏览器已启动')
 
-        login_event = asyncio.Event()
-
-        async def on_request(request):
-            if WATCH_PATH in request.url:
-                log.info('→ 请求: %s %s', request.method, request.url)
-
-        async def on_response(response):
-            if WATCH_PATH in response.url:
-                log.info('← 响应: %s %s', response.status, response.url)
-                if response.status == 200:
-                    log.info('登录成功接口已响应，触发保存流程')
-                    login_event.set()
-                else:
-                    log.warning('接口返回非 200，状态码: %s', response.status)
-
         async def on_console(msg):
             if msg.type in ('error', 'warning'):
                 log.debug('[浏览器控制台 %s] %s', msg.type, msg.text)
 
-        page.on('request', on_request)
-        page.on('response', on_response)
         page.on('console', on_console)
 
         log.info('正在打开页面: %s', LOGIN_URL)
@@ -57,8 +42,27 @@ async def run_login():
             await browser.close()
             return
 
-        log.info('等待登录成功信号（监听 %s）...', WATCH_PATH)
-        await login_event.wait()
+        log.info('等待登录成功，轮询页面元素: %s', LOGIN_SUCCESS_SELECTOR)
+        elapsed = 0
+        while elapsed < LOGIN_TIMEOUT:
+            try:
+                matched = await page.locator(LOGIN_SUCCESS_SELECTOR).count()
+            except Exception as e:
+                log.debug('检测登录元素失败: %s', e)
+                matched = 0
+
+            if matched > 0:
+                log.info('检测到登录成功元素，准备保存 cookies')
+                break
+
+            elapsed += LOGIN_POLL_INTERVAL
+            if elapsed % 10 == 0:
+                log.info('尚未检测到登录成功，已等待 %ds...', elapsed)
+            await asyncio.sleep(LOGIN_POLL_INTERVAL)
+        else:
+            log.error('等待登录超时（%ds），未检测到登录成功元素', LOGIN_TIMEOUT)
+            await browser.close()
+            return
 
         log.info('等待 10 秒让 cookies 完全写入...')
         for i in range(10, 0, -1):

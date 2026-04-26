@@ -7,7 +7,7 @@ import urllib.request
 
 from generators import BaseVideoGenerator
 from runtime_env import data_dir
-from settings_store import load
+from settings_store import as_bool, load
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class KlingVideoGenerator(BaseVideoGenerator):
     def __init__(self):
         s = load('kling')
         g = load('global')
-        self.headless = bool(g.get('headless', False))
+        self.headless = as_bool(g.get('headless', False), default=False)
         self.model = s.get('model', '2.6')
         self.duration = int(s.get('duration', 5))
         self.quality = s.get('quality', '720P')

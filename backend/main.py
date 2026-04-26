@@ -269,8 +269,11 @@ class Api:
         prompt_template = params.get('prompt', '')
         provider = params.get('provider') or load('global').get('image_provider', 'yunwu')
         project_dir = params.get('project_dir', '')
+        should_track_running = bool(project_dir and product_id)
 
         log.info('[生图] 开始 product_id=%s provider=%s', product_id, provider)
+        if should_track_running:
+            self._update_status(project_dir, product_id, {'running': '生图中'})
         try:
             # 1. 获取场景
             log.info('[生图] 获取场景: title=%s', title[:20])
@@ -316,6 +319,9 @@ class Api:
         except Exception as e:
             log.error('[生图] 失败 product_id=%s: %s', product_id, e)
             return {'ok': False, 'message': str(e)}
+        finally:
+            if should_track_running:
+                self._update_status(project_dir, product_id, {'running': ''})
 
     def batch_generate_image(self, params):
         items = params.get('items', [])
@@ -341,9 +347,12 @@ class Api:
         role_image_path = unquote(params.get('role_image_path', ''))
         prompt = params.get('prompt', '')
         project_dir = params.get('project_dir', '')
+        should_track_running = bool(project_dir and product_id)
 
         log.info('[生视频] 开始 product_id=%s', product_id)
         log.info('[生视频] role_image_path=%s', role_image_path)
+        if should_track_running:
+            self._update_status(project_dir, product_id, {'running': '生视频中'})
         try:
             with open(role_image_path, 'rb') as f:
                 image_b64 = base64.b64encode(f.read()).decode()
@@ -365,6 +374,9 @@ class Api:
         except Exception as e:
             log.error('[生视频] 失败 product_id=%s: %s', product_id, e)
             return {'ok': False, 'message': str(e)}
+        finally:
+            if should_track_running:
+                self._update_status(project_dir, product_id, {'running': ''})
 
     def batch_generate_video(self, params):
         items = params.get('items', [])

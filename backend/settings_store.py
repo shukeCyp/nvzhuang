@@ -23,3 +23,19 @@ def load(name: str) -> dict:
 def save(name: str, data: dict):
     with open(_path(name), 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def as_bool(value, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('true', '1', 'yes', 'y', 'on'):
+            return True
+        if normalized in ('false', '0', 'no', 'n', 'off', ''):
+            return False
+    return default

@@ -1,15 +1,38 @@
 <template>
   <div class="select-wrap">
-    <select :value="modelValue" @change="$emit('update:modelValue', $event.target.value)">
-      <option v-for="opt in options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    <select :value="selectedIndex" @change="onChange">
+      <option v-for="(opt, index) in options" :key="String(opt.value)" :value="index">{{ opt.label }}</option>
     </select>
     <span class="select-arrow">›</span>
   </div>
 </template>
 
 <script setup>
-defineProps({ modelValue: String, options: Array })
-defineEmits(['update:modelValue'])
+import { computed } from 'vue'
+
+const props = defineProps({
+  modelValue: {
+    type: [String, Number, Boolean, Object, Array],
+    default: '',
+  },
+  options: {
+    type: Array,
+    default: () => [],
+  },
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const selectedIndex = computed(() => {
+  const index = props.options.findIndex((opt) => Object.is(opt.value, props.modelValue))
+  return index >= 0 ? String(index) : '0'
+})
+
+function onChange(event) {
+  const index = Number(event.target.value)
+  const option = props.options[index]
+  emit('update:modelValue', option ? option.value : '')
+}
 </script>
 
 <style scoped>
