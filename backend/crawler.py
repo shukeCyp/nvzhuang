@@ -43,11 +43,37 @@ def create_download_directory(data_dir: str, region: str, category_name: str) ->
     return download_path
 
 
-def fetch_ranking_page(session: requests.Session, cookie: str, region: str, category_id: str, page_no: int, biz_date: str) -> dict:
+def normalize_seller_type(seller_type: str | list[str] | tuple[str, ...] | None) -> str:
+    if isinstance(seller_type, (list, tuple)):
+        seller_type = ','.join(str(item).strip() for item in seller_type if str(item).strip())
+    seller_type = str(seller_type or '').strip()
+    return seller_type or 'full_managed'
+
+
+def normalize_rank_type(rank_type) -> int:
+    try:
+        rank_type = int(rank_type)
+    except (TypeError, ValueError):
+        rank_type = 1
+    return rank_type if rank_type in (1, 2, 3) else 1
+
+
+def fetch_ranking_page(
+    session: requests.Session,
+    cookie: str,
+    region: str,
+    category_id: str,
+    page_no: int,
+    biz_date: str,
+    seller_type: str | list[str] | tuple[str, ...] | None = 'full_managed',
+    rank_type=1,
+) -> dict:
+    seller_type = normalize_seller_type(seller_type)
+    rank_type = normalize_rank_type(rank_type)
     input_param = (
-        f'{{"pageNo":{page_no},"pageSize":{PAGE_SIZE},"rankType":1,'
+        f'{{"pageNo":{page_no},"pageSize":{PAGE_SIZE},"rankType":{rank_type},'
         f'"bizDate":"{biz_date}","region":"{region}","categoryId":"{category_id}",'
-        f'"orderType":"1","sellerType":"full_managed"}}'
+        f'"orderType":"1","sellerType":"{seller_type}"}}'
     )
     url = f'https://www.tabcut.com/api/trpc/ranking.goods.rankingData?input={input_param}'
     headers = {
@@ -55,6 +81,7 @@ def fetch_ranking_page(session: requests.Session, cookie: str, region: str, cate
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Referer': 'https://www.tabcut.com/',
     }
+    log.info('请求 Tabcut 排名接口：%s', url)
     response = session.get(url, headers=headers, timeout=30)
     response.raise_for_status()
     return response.json()
@@ -174,24 +201,29 @@ def crawl(
     count: int,
     data_dir: str,
     category_name: str | None = None,
+    seller_type: str | list[str] | tuple[str, ...] | None = 'full_managed',
+    rank_type=1,
+    biz_date: str | None = None,
     progress_callback=None,
 ) -> dict:
     if not cookie:
         raise ValueError('未提供 Tabcut Cookie')
 
-    biz_date = get_biz_date()
+    biz_date = str(biz_date or get_biz_date()).replace('-', '')
+    rank_type = normalize_rank_type(rank_type)
+    seller_type = normalize_seller_type(seller_type)
     requested_pages = (count + PAGE_SIZE - 1) // PAGE_SIZE
     all_raw_items: list[dict] = []
     detected_category_name = category_name or get_category_name(category_id) or category_id
     total_available = None
 
-    log.info('开始请求 Tabcut 排名数据，业务日期=%s，地区=%s，分类ID=%s，抓取数量=%s，预计页数=%s', biz_date, region, category_id, count, requested_pages)
+    log.info('开始请求 Tabcut 排名数据，榜单类型=%s，业务日期=%s，地区=%s，分类ID=%s，店铺类型=%s，抓取数量=%s，预计页数=%s', rank_type, biz_date, region, category_id, seller_type, count, requested_pages)
     if progress_callback:
         progress_callback(5, '开始请求排名数据')
 
     with requests.Session() as session:
         for page_no in range(1, requested_pages + 1):
-            payload = fetch_ranking_page(session, cookie, region, category_id, page_no, biz_date)
+            payload = fetch_ranking_page(session, cookie, region, category_id, page_no, biz_date, seller_type, rank_type)
             page_items, page_meta = extract_products(payload)
             log.info('第 %s 页解析完成，本页商品数=%s', page_no, len(page_items))
             if progress_callback:
@@ -267,6 +299,8 @@ def crawl(
         'region': region,
         'category_id': category_id,
         'category_name': detected_category_name,
+        'seller_type': seller_type,
+        'rank_type': rank_type,
         'crawl_date': datetime.now().isoformat(),
         'biz_date': biz_date,
         'download_path': download_dir,

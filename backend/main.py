@@ -53,9 +53,12 @@ class Api:
         def run_task():
             try:
                 log.info(
-                    '开始抓取任务，地区=%s，分类=%s，数量=%s',
+                    '开始抓取任务，地区=%s，分类=%s，榜单类型=%s，业务日期=%s，店铺类型=%s，数量=%s',
                     params.get('region'),
                     params.get('category_id'),
+                    params.get('rank_type') or params.get('rankType') or 1,
+                    params.get('biz_date') or params.get('bizDate') or '',
+                    params.get('seller_type') or params.get('sellerTypes') or 'full_managed',
                     params.get('count'),
                 )
                 summary = crawl(
@@ -65,6 +68,9 @@ class Api:
                     count=int(params.get('count', 48)),
                     data_dir=DATA_DIR,
                     category_name=params.get('category_name'),
+                    seller_type=params.get('seller_type') or params.get('sellerTypes') or 'full_managed',
+                    rank_type=params.get('rank_type') or params.get('rankType') or 1,
+                    biz_date=params.get('biz_date') or params.get('bizDate'),
                     progress_callback=update_progress,
                 )
                 with TASK_LOCK:

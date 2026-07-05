@@ -66,6 +66,30 @@
             <label>默认抓取数量</label>
             <input class="app-input" type="number" v-model.number="crawl.count" min="1" max="200" />
           </div>
+          <div class="field field-wide">
+            <label>默认榜单类型</label>
+            <div class="choice-group">
+              <label v-for="item in rankTypes" :key="item.value" class="choice-item">
+                <input type="radio" :value="item.value" v-model.number="crawl.rankType" />
+                <span>{{ item.label }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="field field-wide">
+            <label>{{ crawlDateFieldLabel }}</label>
+            <input v-if="crawl.rankType === 1" class="app-input" type="date" v-model="crawl.bizDate" />
+            <input v-else-if="crawl.rankType === 2" class="app-input" type="week" v-model="crawl.bizWeek" />
+            <input v-else class="app-input" type="month" v-model="crawl.bizMonth" />
+          </div>
+          <div class="field field-wide">
+            <label>默认店铺类型</label>
+            <div class="checkbox-group">
+              <label v-for="item in sellerTypes" :key="item.value" class="checkbox-item">
+                <input type="checkbox" :value="item.value" v-model="crawl.sellerTypes" />
+                <span>{{ item.label }}</span>
+              </label>
+            </div>
+          </div>
         </div>
         <button class="btn-primary" @click="save">保存</button>
       </div>
@@ -207,7 +231,23 @@ const tabs = [
 
 const regions = ref([])
 const categories = ref([])
-const crawl = ref({ cookie: '', region: 'US', categoryId: '28', count: 48 })
+const sellerTypes = ref([])
+const rankTypes = ref([
+  { label: '日榜', value: 1 },
+  { label: '周榜', value: 2 },
+  { label: '月榜', value: 3 },
+])
+const crawl = ref({
+  cookie: '',
+  region: 'US',
+  categoryId: '28',
+  count: 48,
+  sellerTypes: ['full_managed'],
+  rankType: 1,
+  bizDate: defaultDay(),
+  bizWeek: defaultWeek(),
+  bizMonth: defaultMonth(),
+})
 const llm = ref({ base_url: '', api_key: '', model: '' })
 const hotang = ref({ base_url: '', model: '', api_key: '' })
 const yunwu = ref({ base_url: '', api_key: '', quality: '1K' })
@@ -236,6 +276,11 @@ const klingQualityOptions = computed(() =>
     : [{ label: '720P', value: '720P' }, { label: '1080P', value: '1080P' }]
 )
 const logStats = ref({ files: [], total_size: 0 })
+const crawlDateFieldLabel = computed(() => {
+  if (crawl.value.rankType === 2) return '默认选择周'
+  if (crawl.value.rankType === 3) return '默认选择月'
+  return '默认选择日期'
+})
 const qualityOptions = [
   { label: '1K', value: '1K' },
   { label: '2K', value: '2K' },
@@ -273,9 +318,17 @@ onMounted(async () => {
     const meta = await window.pywebview.api.get_crawl_metadata()
     regions.value = meta?.regions || []
     categories.value = meta?.categories || []
+    rankTypes.value = meta?.rank_types || rankTypes.value
+    sellerTypes.value = meta?.seller_types || [
+      { label: '跨境店', value: 'over_sea' },
+      { label: '本土店', value: 'local' },
+      { label: '全托管店', value: 'full_managed' },
+    ]
     if (meta?.defaults) Object.assign(crawl.value, meta.defaults)
     const data = await window.pywebview.api.get_settings('crawl')
     if (data && Object.keys(data).length) Object.assign(crawl.value, data)
+    crawl.value.rankType = Number(crawl.value.rankType || 1)
+    crawl.value.sellerTypes = normalizeSellerTypes(crawl.value.sellerTypes || crawl.value.seller_type)
     const llmData = await window.pywebview.api.get_settings('llm')
     if (llmData && Object.keys(llmData).length) Object.assign(llm.value, llmData)
     const hotangData = await window.pywebview.api.get_settings('hotang')
@@ -296,11 +349,62 @@ onMounted(async () => {
 
 async function save() {
   try {
-    await window.pywebview.api.set_settings('crawl', crawl.value)
+    await window.pywebview.api.set_settings('crawl', {
+      ...crawl.value,
+      sellerTypes: normalizeSellerTypes(crawl.value.sellerTypes),
+      rankType: Number(crawl.value.rankType || 1),
+    })
     toast.success('设置已保存')
   } catch {
     toast.error('保存失败')
   }
+}
+
+function normalizeSellerTypes(values) {
+  if (typeof values === 'string') {
+    values = values.split(',')
+  }
+  const selected = Array.isArray(values) ? values.filter(Boolean) : []
+  return selected.length ? selected : ['full_managed']
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function formatDate(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+function defaultDay() {
+  const date = new Date()
+  date.setDate(date.getDate() - 1)
+  return formatDate(date)
+}
+
+function defaultWeek() {
+  const today = new Date()
+  const day = today.getDay() || 7
+  const currentMonday = new Date(today)
+  currentMonday.setDate(today.getDate() - day + 1)
+  const previousMonday = new Date(currentMonday)
+  previousMonday.setDate(currentMonday.getDate() - 7)
+  return weekValue(previousMonday)
+}
+
+function defaultMonth() {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 1, 1)
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`
+}
+
+function weekValue(date) {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const day = target.getUTCDay() || 7
+  target.setUTCDate(target.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1))
+  const week = Math.ceil((((target - yearStart) / 86400000) + 1) / 7)
+  return `${target.getUTCFullYear()}-W${pad2(week)}`
 }
 
 async function saveLlm() {
@@ -380,8 +484,16 @@ async function savePrompts() {
   display: flex; flex-direction: column; gap: 18px;
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field-wide { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 7px; }
 .field label { font-size: 12px; color: #52525b; font-weight: 500; }
+.checkbox-group, .choice-group { display: flex; flex-wrap: wrap; gap: 10px; min-height: 36px; align-items: center; }
+.checkbox-item, .choice-item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px;
+  border: 1px solid #e4e4e7; border-radius: 8px; font-size: 13px; color: #27272a;
+  cursor: pointer; user-select: none; background: #fff;
+}
+.checkbox-item input, .choice-item input { margin: 0; }
 textarea {
   width: 100%; padding: 10px; border: 1px solid #e4e4e7; border-radius: 8px;
   font-size: 12px; font-family: monospace; resize: vertical; outline: none;

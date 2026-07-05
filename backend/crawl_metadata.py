@@ -49,10 +49,24 @@ CRAWL_REGIONS = [
     {'value': 'FR', 'label': '法国'},
 ]
 
+SELLER_TYPE_OPTIONS = [
+    {'value': 'over_sea', 'label': '跨境店'},
+    {'value': 'local', 'label': '本土店'},
+    {'value': 'full_managed', 'label': '全托管店'},
+]
+
+RANK_TYPE_OPTIONS = [
+    {'value': 1, 'label': '日榜'},
+    {'value': 2, 'label': '周榜'},
+    {'value': 3, 'label': '月榜'},
+]
+
 DEFAULT_CRAWL_SETTINGS = {
     'region': 'US',
     'categoryId': '28',
     'count': 48,
+    'sellerTypes': ['full_managed'],
+    'rankType': 1,
 }
 
 
@@ -68,5 +82,7 @@ def get_crawl_metadata() -> dict:
     return {
         'regions': CRAWL_REGIONS,
         'categories': CRAWL_CATEGORIES,
+        'seller_types': SELLER_TYPE_OPTIONS,
+        'rank_types': RANK_TYPE_OPTIONS,
         'defaults': DEFAULT_CRAWL_SETTINGS,
     }
