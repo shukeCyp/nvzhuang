@@ -19,6 +19,20 @@ POLL_INTERVAL = 10
 POLL_TIMEOUT = 600  # 最多等 10 分钟
 
 
+def _audio_sync_enabled(icon_name: str | None, legacy_href: str | None) -> bool | None:
+    """Return the audio-sync checkbox state, or None if the markup is unknown."""
+    icon_value = (icon_name or '').lower()
+    if 'unchecked' in icon_value:
+        return False
+    if 'checked' in icon_value:
+        return True
+
+    href_value = (legacy_href or '').lower()
+    if href_value:
+        return 'unchecked' not in href_value
+    return None
+
+
 class KlingVideoGenerator(BaseVideoGenerator):
 
     def __init__(self):
@@ -191,14 +205,24 @@ class KlingVideoGenerator(BaseVideoGenerator):
         await asyncio.sleep(0.5)
         log.info('模型已选择: %s', model_label)
 
-        # 2. 取消音画同步（如果已选中）
-        sync_btn = page.locator('.setting-switch').filter(has_text='音画同步')
-        icon = sync_btn.locator('.svg-icon use')
-        href = await icon.get_attribute('xlink:href')
-        if href and 'unchecked' not in href:
-            await sync_btn.click()
-            await asyncio.sleep(0.3)
-            log.info('已取消音画同步')
+        # 2. 取消音画同步（如果已选中）。当前页面使用 svg[icon-name]，
+        # 保留对旧版 .svg-icon use[xlink:href] 的兼容。
+        sync_btn = page.locator('.setting-switch', has_text='音画同步').first
+        if await sync_btn.count() == 0:
+            log.warning('未找到音画同步开关，跳过该设置')
+        else:
+            current_icon = sync_btn.locator('svg[icon-name]').first
+            legacy_icon = sync_btn.locator('.svg-icon use').first
+            icon_name = await current_icon.get_attribute('icon-name') if await current_icon.count() else None
+            legacy_href = await legacy_icon.get_attribute('xlink:href') if await legacy_icon.count() else None
+            sync_enabled = _audio_sync_enabled(icon_name, legacy_href)
+
+            if sync_enabled is True:
+                await sync_btn.click()
+                await asyncio.sleep(0.3)
+                log.info('已取消音画同步')
+            elif sync_enabled is None:
+                log.warning('无法识别音画同步开关状态，跳过该设置')
 
         # 3. 点击设置按钮
         await page.locator('.setting-select').first.click()
